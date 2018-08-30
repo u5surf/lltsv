@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/andrew-d/go-termutil"
 	"github.com/mgutz/ansi"
@@ -27,7 +28,7 @@ type Lltsv struct {
 	exprRunners  map[string]*ExprRunner
 }
 
-func newLltsv(keys []string, ignoreKeys []string, noKey bool, filters []string, exprs []string) *Lltsv {
+func newLltsv(keys []string, ignoreKeys []string, noKey bool, filters []string, exprs []string, format string) *Lltsv {
 	ignoreKeyMap := make(map[string]struct{})
 	for _, key := range ignoreKeys {
 		ignoreKeyMap[key] = struct{}{}
@@ -39,7 +40,7 @@ func newLltsv(keys []string, ignoreKeys []string, noKey bool, filters []string, 
 		filters:      filters,
 		exprs:        exprs,
 		funcAppend:   getFuncAppend(noKey),
-		funcFilters:  getFuncFilters(filters),
+		funcFilters:  getFuncFilters(filters, format),
 		exprRunners:  getExprRunners(exprs),
 	}
 }
@@ -141,7 +142,7 @@ func getFuncAppend(noKey bool) tFuncAppend {
 	}
 }
 
-func getFuncFilters(filters []string) map[string]tFuncFilter {
+func getFuncFilters(filters []string, format string) map[string]tFuncFilter {
 	funcFilters := map[string]tFuncFilter{}
 	for _, f := range filters {
 		token := strings.SplitN(f, " ", 3)
@@ -151,13 +152,13 @@ func getFuncFilters(filters []string) map[string]tFuncFilter {
 		key := token[0]
 		switch token[1] {
 		case ">", ">=", "<=", "<":
-			r, err := strconv.ParseFloat(token[2], 64)
+			r, err := timeParser(token[2], format)
 			if err != nil {
 				log.Fatal(err)
 			}
 
 			funcFilters[key] = func(val string) bool {
-				num, err := strconv.ParseFloat(val, 64)
+				num, err := timeParser(val, format)
 				if err != nil {
 					log.Println(err)
 					return false
@@ -213,6 +214,22 @@ func getFuncFilters(filters []string) map[string]tFuncFilter {
 		}
 	}
 	return funcFilters
+}
+
+func timeParser(val, format string) (float64, error) {
+	val = strings.Replace(val, "\"", "", -1)
+	val = strings.Replace(val, "[", "", -1)
+	val = strings.Replace(val, "]", "", -1)
+	format = strings.Replace(format, "[", "", -1)
+	format = strings.Replace(format, "]", "", -1)
+	t, err := time.Parse(format, val)
+	if err == nil {
+		num := t.Unix()
+		return float64(num), err
+	} else {
+		num, err := strconv.ParseFloat(val, 64)
+		return num, err
+	}
 }
 
 func getExprRunners(exprs []string) map[string]*ExprRunner {

@@ -73,6 +73,10 @@ func main() {
 			Name:  "filter, f",
 			Usage: "filter expression to output",
 		},
+		cli.StringFlag{
+			Name:  "timeformat, t",
+			Usage: "time format to filter expression",
+		},
 		cli.StringSliceFlag{
 			Name:  "expr, e",
 			Usage: "evaluate value by expression to output",
@@ -102,6 +106,7 @@ func doMain(c *cli.Context) error {
 	noKey := c.Bool("no-key")
 	filters := c.StringSlice("filter")
 	exprs := c.StringSlice("expr")
+	format := c.String("timeformat")
 
 	ignoreKeys := make([]string, 0, 0)
 	// If -k,--key is specified, -i,--ignore-key is ignored.
@@ -109,7 +114,7 @@ func doMain(c *cli.Context) error {
 		ignoreKeys = strings.Split(c.String("ignore-key"), ",")
 	}
 
-	lltsv := newLltsv(keys, ignoreKeys, noKey, filters, exprs)
+	lltsv := newLltsv(keys, ignoreKeys, noKey, filters, exprs, format)
 
 	if len(c.Args()) > 0 {
 		for _, filename := range c.Args() {
